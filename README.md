@@ -149,9 +149,12 @@ apps/site                                 the Next.js site
 
 ## Deploy
 
-The site deploys to Vercel with **Root Directory** set to `apps/site`. `vercel.json` builds the
-workspace packages first. Open Graph URLs resolve from Vercel's own domain variable, so a fresh
-deploy needs no configuration. Set `NEXT_PUBLIC_SITE_URL` once you point a custom domain at it.
+Import the repo into Vercel and set **Root Directory** to `apps/site`. Leave the framework preset
+on Next.js. `apps/site/vercel.json` builds the workspace packages before the site, so keep
+*Include source files outside of the Root Directory* enabled.
+
+Open Graph URLs resolve from Vercel's own `VERCEL_PROJECT_PRODUCTION_URL`, so a fresh deploy needs no
+environment variables. Point a custom domain at it and set `NEXT_PUBLIC_SITE_URL` to that origin.
 
 ## Release
 
