@@ -1,0 +1,47 @@
+{
+  "name": "retro-crt",
+  "version": "1.0.0",
+  "description": "A CRT monitor effect that renders your content inside the screen. Framework-agnostic, zero dependencies.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./webgl": {
+      "types": "./dist/webgl.d.ts",
+      "import": "./dist/webgl.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "scripts": {
+    "build": "tsup && node -e \"require('fs').copyFileSync('src/styles.css','dist/styles.css')\""
+  },
+  "keywords": [
+    "crt",
+    "retro",
+    "scanlines",
+    "webgl",
+    "svg-filter",
+    "effect"
+  ],
+  "author": "pixelyokai",
+  "homepage": "https://github.com/pixelyokai/retro-crt#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelyokai/retro-crt.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelyokai/retro-crt/issues"
+  }
+}

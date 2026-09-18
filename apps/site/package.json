@@ -1,0 +1,31 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/subset-fonts.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/subset-fonts.mjs",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@retro-crt/react": "*",
+    "@tailwindcss/postcss": "4.3.3",
+    "mediabunny": "1.57.0",
+    "motion": "13.4.0",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "retro-crt": "*",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "agentation": "3.0.2",
+    "typescript": "~6.0.0",
+    "subset-font": "^2.3.0"
+  }
+}

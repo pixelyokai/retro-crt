@@ -1,0 +1,37 @@
+{
+  "name": "retro-crt-monorepo",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": [
+    "packages/core",
+    "packages/react",
+    "packages/vue",
+    "packages/solid",
+    "packages/svelte",
+    "packages/angular",
+    "apps/site"
+  ],
+  "scripts": {
+    "build": "npm run build -w retro-crt && npm run build -w @retro-crt/react -w @retro-crt/vue -w @retro-crt/solid -w @retro-crt/svelte -w @retro-crt/angular",
+    "build:site": "npm run build && npm run build -w site",
+    "dev": "npm run build && npm run dev -w site",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/core --noEmit",
+    "size": "node scripts/size.mjs",
+    "release": "npm run build && npm publish -w retro-crt && npm publish -w @retro-crt/react -w @retro-crt/vue -w @retro-crt/solid -w @retro-crt/svelte -w @retro-crt/angular"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "^27.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.0",
+    "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "esbuild": "^0.28.2"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

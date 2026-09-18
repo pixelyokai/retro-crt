@@ -1,0 +1,46 @@
+{
+  "name": "@retro-crt/angular",
+  "version": "1.0.0",
+  "description": "Angular adapter for retro-crt",
+  "license": "MIT",
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=19.0.0",
+    "retro-crt": "^1.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/compiler-cli": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "ng-packagr": "^22.1.0",
+    "rxjs": "^7.8.0",
+    "retro-crt": "*"
+  },
+  "author": "pixelyokai",
+  "homepage": "https://github.com/pixelyokai/retro-crt/tree/main/packages/angular#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelyokai/retro-crt.git",
+    "directory": "packages/angular"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelyokai/retro-crt/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "crt",
+    "retro",
+    "scanlines",
+    "effect",
+    "angular"
+  ]
+}

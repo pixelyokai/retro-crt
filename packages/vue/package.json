@@ -1,0 +1,49 @@
+{
+  "name": "@retro-crt/vue",
+  "version": "1.0.0",
+  "description": "Vue adapter for retro-crt",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --minify --clean --external vue --external retro-crt"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3",
+    "retro-crt": "^1.0.0"
+  },
+  "devDependencies": {
+    "vue": "^3.5.0",
+    "retro-crt": "*"
+  },
+  "author": "pixelyokai",
+  "homepage": "https://github.com/pixelyokai/retro-crt/tree/main/packages/vue#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelyokai/retro-crt.git",
+    "directory": "packages/vue"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelyokai/retro-crt/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "crt",
+    "retro",
+    "scanlines",
+    "effect",
+    "vue"
+  ]
+}

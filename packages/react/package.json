@@ -1,0 +1,50 @@
+{
+  "name": "@retro-crt/react",
+  "version": "1.0.0",
+  "description": "React adapter for retro-crt",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm --dts --minify --clean --external react --external retro-crt"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "retro-crt": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0",
+    "retro-crt": "*"
+  },
+  "author": "pixelyokai",
+  "homepage": "https://github.com/pixelyokai/retro-crt/tree/main/packages/react#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelyokai/retro-crt.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelyokai/retro-crt/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "crt",
+    "retro",
+    "scanlines",
+    "effect",
+    "react"
+  ]
+}

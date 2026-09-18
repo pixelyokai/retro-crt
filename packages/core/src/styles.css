@@ -1,0 +1,229 @@
+/* retro-crt — every animated layer composites on transform/opacity only (§10). */
+
+.rcrt {
+  --rcrt-inset: 0px;
+  --rcrt-screen-radius: 0px;
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  /* The glass is opaque: curvature pulls the picture inward and grain blends over what it exposes. */
+  background: var(--rcrt-background, #000);
+}
+
+.rcrt[data-rcrt-bezel] {
+  padding: var(--rcrt-inset);
+  border-radius: var(--rcrt-outer-radius);
+  background: var(--rcrt-housing);
+  box-shadow: var(--rcrt-bezel-shadow);
+}
+
+.rcrt-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border-radius: var(--rcrt-screen-radius);
+  overflow: hidden;
+  background: var(--rcrt-background, #000);
+}
+
+.rcrt[data-rcrt-tier='svg'] .rcrt-content[data-rcrt-filtered] {
+  filter: var(--rcrt-content-filter);
+}
+
+.rcrt-fx,
+.rcrt-bevel,
+.rcrt-spill,
+.rcrt-lip,
+.rcrt-glare,
+.rcrt-gl {
+  position: absolute;
+  pointer-events: none;
+}
+
+.rcrt-fx,
+.rcrt-spill,
+.rcrt-lip,
+.rcrt-glare,
+.rcrt-gl {
+  inset: var(--rcrt-inset);
+  border-radius: var(--rcrt-screen-radius);
+}
+
+.rcrt-fx {
+  z-index: 2;
+  overflow: hidden;
+}
+
+/*
+ * Blend the whole grain group against the picture; a blend mode on the grain itself would only see
+ * its own transparent group. This container is deliberately unfiltered (animating inside a filter
+ * re-rasterises it every step), so it is inset by hand to the area the barrel leaves covered.
+ */
+.rcrt-fx-motion {
+  mix-blend-mode: overlay;
+  inset: calc(var(--rcrt-inset) + var(--rcrt-curve-y, 0px)) calc(var(--rcrt-inset) + var(--rcrt-curve-x, 0px));
+  border-radius: calc(var(--rcrt-screen-radius) + var(--rcrt-curve-x, 0px));
+}
+
+.rcrt-fx[data-rcrt-filtered] {
+  filter: var(--rcrt-fx-filter);
+}
+
+.rcrt-gl {
+  z-index: 1;
+  width: calc(100% - 2 * var(--rcrt-inset));
+  height: calc(100% - 2 * var(--rcrt-inset));
+}
+
+.rcrt[data-rcrt-tier='webgl'] .rcrt-content > * {
+  opacity: 0;
+}
+
+.rcrt-fx > * {
+  position: absolute;
+  inset: 0;
+}
+
+.rcrt-bloom {
+  z-index: 0;
+  -webkit-backdrop-filter: var(--rcrt-bloom-filter);
+  backdrop-filter: var(--rcrt-bloom-filter);
+  opacity: var(--rcrt-bloom-alpha);
+}
+
+.rcrt-tint {
+  z-index: 1;
+  background: var(--rcrt-tint);
+  mix-blend-mode: color;
+  opacity: var(--rcrt-tint-alpha);
+}
+
+.rcrt-scanlines {
+  z-index: 2;
+  /* A ramp, not hard bands: sharp edges beat against the pixel grid into moire at fractional gaps. */
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(0 0 0 / var(--rcrt-scan-alpha)) 0,
+    transparent var(--rcrt-scan-line),
+    transparent calc(var(--rcrt-scan-gap) - var(--rcrt-scan-line)),
+    rgb(0 0 0 / var(--rcrt-scan-alpha)) var(--rcrt-scan-gap)
+  );
+}
+
+.rcrt-noise {
+  z-index: 3;
+  inset: -50%;
+  background-image: var(--rcrt-noise-url);
+  opacity: var(--rcrt-noise-alpha);
+  animation: rcrt-noise-8 0.4s steps(1) infinite;
+}
+
+.rcrt-noise[data-frames='6'] { animation-name: rcrt-noise-6; }
+.rcrt-noise[data-frames='4'] { animation-name: rcrt-noise-4; }
+
+.rcrt-curve {
+  z-index: 4;
+  border-radius: inherit;
+  box-shadow: inset 0 0 var(--rcrt-edge-blur) var(--rcrt-edge-spread) rgb(0 0 0 / 0.75);
+}
+
+.rcrt-vignette {
+  z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / var(--rcrt-vignette)) 100%);
+}
+
+.rcrt-flicker {
+  z-index: 6;
+  background: #000;
+  opacity: 0;
+  animation: rcrt-flicker 3.1s steps(1) infinite;
+}
+
+.rcrt[data-rcrt-still] .rcrt-noise,
+.rcrt[data-rcrt-still] .rcrt-flicker {
+  animation: none;
+}
+
+.rcrt[data-rcrt-paused] .rcrt-noise,
+.rcrt[data-rcrt-paused] .rcrt-flicker {
+  animation-play-state: paused;
+}
+
+.rcrt[data-rcrt-tuning] .rcrt-fx,
+.rcrt[data-rcrt-tuning] .rcrt-content {
+  will-change: filter;
+}
+
+/* bezel — housing and shadow are on .rcrt itself */
+.rcrt-bevel {
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--rcrt-outer-radius);
+  background: linear-gradient(var(--rcrt-bevel-angle), var(--rcrt-bevel-hi), transparent 45%, transparent 55%, var(--rcrt-bevel-lo));
+  box-shadow: var(--rcrt-bevel-edge);
+}
+
+.rcrt-spill { z-index: 0; box-shadow: var(--rcrt-spill); }
+.rcrt-lip { z-index: 3; box-shadow: var(--rcrt-lip-shadow); }
+
+.rcrt-glare {
+  z-index: 4;
+  background: linear-gradient(135deg, rgb(255 255 255 / var(--rcrt-glare)) 0%, rgb(255 255 255 / calc(var(--rcrt-glare) * 0.3)) 22%, transparent 42%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .rcrt-spill { display: none; }
+}
+
+/* mountFullPage: effect layers pinned to the viewport; the filter itself sits on <html> */
+.rcrt[data-rcrt-mode='viewport'] {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Offsets stay within ±25% of the 200% grain layer so it always covers the screen. */
+@keyframes rcrt-noise-8 {
+  0% { transform: translate(0, 0); }
+  12.5% { transform: translate(-14%, 7%); }
+  25% { transform: translate(9%, -18%); }
+  37.5% { transform: translate(-25%, -6%); }
+  50% { transform: translate(18%, 15%); }
+  62.5% { transform: translate(-6%, 23%); }
+  75% { transform: translate(23%, -10%); }
+  87.5% { transform: translate(-18%, -23%); }
+}
+
+@keyframes rcrt-noise-6 {
+  0% { transform: translate(0, 0); }
+  16.6% { transform: translate(-15%, 9%); }
+  33.3% { transform: translate(10%, -20%); }
+  50% { transform: translate(-23%, -7%); }
+  66.6% { transform: translate(17%, 18%); }
+  83.3% { transform: translate(-7%, -25%); }
+}
+
+@keyframes rcrt-noise-4 {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-17%, 10%); }
+  50% { transform: translate(14%, -22%); }
+  75% { transform: translate(-22%, -9%); }
+}
+
+@keyframes rcrt-flicker {
+  0% { opacity: 0; }
+  7% { opacity: 0.06; }
+  8% { opacity: 0; }
+  31% { opacity: 0.03; }
+  33% { opacity: 0; }
+  58% { opacity: 0.08; }
+  59% { opacity: 0.02; }
+  61% { opacity: 0; }
+  84% { opacity: 0.04; }
+  86% { opacity: 0; }
+}

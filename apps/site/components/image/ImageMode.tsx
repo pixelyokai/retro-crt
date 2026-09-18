@@ -1,0 +1,194 @@
+'use client'
+import { CRTScreen } from '@retro-crt/react'
+import { motion } from 'motion/react'
+import { useCallback, useEffect, useId, useRef, useState, type DragEvent } from 'react'
+import { loadExample } from '@/lib/examples'
+import { inspect, type Media } from '@/lib/inspect'
+import { SPRING_SURFACE } from '@/lib/motion'
+import { ACCEPT, Rejection, displayName } from '@/lib/validate'
+import { AppShell } from '../AppShell'
+import { PrimaryAction, Sidebar } from '../Sidebar'
+import { DownloadIcon, UploadIcon } from '../ui/icons'
+import { Pressable } from '../ui/Pressable'
+import { Segmented } from '../ui/Segmented'
+import { useToast } from '../ui/Toast'
+import { useCrt } from '../useCrt'
+import { DownloadModal } from './DownloadModal'
+import { useReduceMotion } from '../ui/useReduceMotion'
+
+const RATIOS = [
+  { value: '1:1' as const, label: '1:1' },
+  { value: '4:3' as const, label: '4:3' },
+  { value: '16:9' as const, label: '16:9' },
+  { value: '9:16' as const, label: '9:16' },
+]
+type Ratio = (typeof RATIOS)[number]['value']
+
+const even = (n: number) => Math.max(2, Math.round(n / 2) * 2)
+
+interface Loaded {
+  media: Media
+  file: File
+  /** The bundled sample rather than something the visitor chose. */
+  sample: boolean
+}
+
+export function ImageMode() {
+  const crt = useCrt()
+  const toast = useToast()
+  const reduce = useReduceMotion()
+  const [ratio, setRatio] = useState<Ratio>('16:9')
+  // A phone stage is portrait, so 16:9 would letterbox down to a sliver. Applied after mount to
+  // keep the server and the first client render identical.
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 1023px)').matches) setRatio('9:16')
+  }, [])
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const [areaSize, setAreaSize] = useState({ width: 0, height: 0 })
+  const current = useRef<Media | null>(null)
+  const inputId = useId()
+
+  // A callback ref so the observer attaches the moment the stage exists, not a frame later.
+  const area = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return
+    const observer = new ResizeObserver(([entry]) => setAreaSize({ width: entry.contentRect.width, height: entry.contentRect.height }))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // One object URL alive at a time, revoked on replacement and on unmount (§8.2).
+  const replace = useCallback((next: Loaded | null) => {
+    if (current.current) URL.revokeObjectURL(current.current.url)
+    current.current = next?.media ?? null
+    setLoaded(next)
+  }, [])
+  useEffect(() => () => replace(null), [replace])
+
+  // The sample opens the tab so the effect is visible before anything is uploaded.
+  useEffect(() => {
+    const controller = new AbortController()
+    loadExample('image', controller.signal)
+      .then(async (file) => {
+        const media = await inspect(file)
+        if (controller.signal.aborted) return URL.revokeObjectURL(media.url)
+        replace({ media, file, sample: true })
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [replace])
+
+  const onFile = async (file: File) => {
+    setBusy(true)
+    try {
+      replace({ media: await inspect(file), file, sample: false })
+    } catch (err) {
+      toast('error', err instanceof Rejection ? err.message : 'That file couldn’t be read.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pick = () => document.getElementById(inputId)?.click()
+  const drop = (e: DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file) onFile(file)
+  }
+
+  const [rw, rh] = ratio.split(':').map(Number)
+  // The largest box of the chosen ratio that fits the stage; animating it morphs between ratios.
+  const fit = !areaSize.height
+    ? { width: 0, height: 0 }
+    : areaSize.width / areaSize.height > rw / rh
+      ? { width: (areaSize.height * rw) / rh, height: areaSize.height }
+      : { width: areaSize.width, height: (areaSize.width * rh) / rw }
+
+  const burnConfig = () => {
+    const media = loaded?.media
+    const rect = box.current?.getBoundingClientRect()
+    if (!media || !rect?.width) throw new Error('The preview isn’t ready yet.')
+    const long = media.kind === 'image' ? Math.min(2048, Math.max(1080, media.width, media.height)) : Math.min(1280, Math.max(720, media.width, media.height))
+    const width = even(rw >= rh ? long : (long * rw) / rh)
+    const height = even(rw >= rh ? (long * rh) / rw : long)
+    return { options: crt.options, engine: crt.active?.renderer === 'webgl' ? ('webgl' as const) : ('canvas' as const), width, height, scale: width / rect.width }
+  }
+
+  return (
+    <AppShell
+      stage={
+        <div onDragOver={(e) => e.preventDefault()} onDrop={drop} className="flex size-full flex-col items-center justify-center gap-2">
+          <div ref={area} className="flex min-h-0 w-full flex-1 items-center justify-center">
+            <motion.div ref={box} initial={false} animate={fit} transition={reduce ? { duration: 0 } : SPRING_SURFACE}>
+              {loaded && (
+                <CRTScreen key={loaded.media.url} className="size-full rounded-sm" {...crt.options} onRendererChange={crt.onRendererChange}>
+                  {loaded.media.kind === 'image' ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- a local blob preview; next/image can't optimise it
+                    <img src={loaded.media.url} alt={loaded.sample ? 'The bundled example still' : 'Your image'} className="block size-full object-cover" />
+                  ) : (
+                    <video src={loaded.media.url} className="block size-full object-cover" autoPlay muted loop playsInline aria-label={loaded.sample ? 'The bundled example clip' : 'Your video'} />
+                  )}
+                </CRTScreen>
+              )}
+            </motion.div>
+          </div>
+          <p className="min-h-5 text-xs text-neutral-500 tabular-nums">
+            {loaded &&
+              `${loaded.sample ? 'Example' : displayName(loaded.file.name)} · ${loaded.media.width}×${loaded.media.height}${
+                loaded.media.kind === 'video' ? ` · ${loaded.media.duration.toFixed(1)}s` : ''
+              }`}
+          </p>
+        </div>
+      }
+      controls={
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented label="Aspect ratio" variant="bare" value={ratio} options={RATIOS} onChange={setRatio} />
+          <span aria-hidden className="h-5 w-px bg-white/16" />
+          <input
+            id={inputId}
+            type="file"
+            accept={ACCEPT}
+            disabled={busy}
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) onFile(file)
+            }}
+          />
+          <Pressable
+            onClick={pick}
+            disabled={busy}
+            className="chip-inset flex items-center gap-1 rounded-xs bg-neutral-800 py-0.5 pr-1.5 pl-2 text-xs text-neutral-300 transition-colors hover:bg-neutral-700 disabled:opacity-50"
+          >
+            <UploadIcon />
+            <span className="px-0.5">{busy ? 'Checking…' : 'Replace'}</span>
+          </Pressable>
+        </div>
+      }
+      sidebar={
+        <Sidebar
+          store={crt}
+          action={
+            <>
+              <PrimaryAction icon={<DownloadIcon />} label="Download" disabled={!loaded} onClick={() => setDownloading(true)} />
+              {loaded && (
+                <DownloadModal
+                  key={loaded.media.url}
+                  open={downloading}
+                  onClose={() => setDownloading(false)}
+                  media={loaded.media}
+                  file={loaded.file}
+                  config={burnConfig}
+                  image={() => box.current?.querySelector('img') ?? null}
+                />
+              )}
+            </>
+          }
+        />
+      }
+    />
+  )
+}

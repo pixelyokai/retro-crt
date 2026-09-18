@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": false,
+    "inlineSources": true,
+    "sourceMap": true,
+    "verbatimModuleSyntax": false,
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"]
+  },
+  "angularCompilerOptions": {
+    "compilationMode": "partial",
+    "strictTemplates": true,
+    "strictInjectionParameters": true
+  },
+  "include": ["src"]
+}

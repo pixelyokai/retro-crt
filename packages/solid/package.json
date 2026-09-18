@@ -1,0 +1,53 @@
+{
+  "name": "@retro-crt/solid",
+  "version": "1.0.0",
+  "description": "Solid adapter for retro-crt",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "solid": "./dist/index.jsx",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup"
+  },
+  "peerDependencies": {
+    "solid-js": ">=1.6",
+    "retro-crt": "^1.0.0"
+  },
+  "devDependencies": {
+    "babel-preset-solid": "^1.9.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@babel/core": "^7.26.0",
+    "solid-js": "^1.9.0",
+    "retro-crt": "*"
+  },
+  "author": "pixelyokai",
+  "homepage": "https://github.com/pixelyokai/retro-crt/tree/main/packages/solid#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pixelyokai/retro-crt.git",
+    "directory": "packages/solid"
+  },
+  "bugs": {
+    "url": "https://github.com/pixelyokai/retro-crt/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "crt",
+    "retro",
+    "scanlines",
+    "effect",
+    "solid"
+  ]
+}
