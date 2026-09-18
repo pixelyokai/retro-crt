@@ -3,6 +3,7 @@ import { CRTScreen } from '@retro-crt/react'
 import { motion } from 'motion/react'
 import { useCallback, useEffect, useId, useRef, useState, type DragEvent } from 'react'
 import { loadExample } from '@/lib/examples'
+import { Cancelled, detectVideoPath, exportImage, exportMediaRecorder, exportWebCodecs, fileName, imageExt, preferredContainer, type VideoPath } from '@/lib/export'
 import { inspect, type Media } from '@/lib/inspect'
 import { SPRING_SURFACE } from '@/lib/motion'
 import { ACCEPT, Rejection, displayName } from '@/lib/validate'
@@ -13,7 +14,6 @@ import { Pressable } from '../ui/Pressable'
 import { Segmented } from '../ui/Segmented'
 import { useToast } from '../ui/Toast'
 import { useCrt } from '../useCrt'
-import { DownloadModal } from './DownloadModal'
 import { useReduceMotion } from '../ui/useReduceMotion'
 
 const RATIOS = [
@@ -26,12 +26,23 @@ type Ratio = (typeof RATIOS)[number]['value']
 
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2)
 
+/** Long enough that a still image never swaps the button label, short enough to catch a clip. */
+const SLOW_AFTER_MS = 400
+
+function save(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob)
+  Object.assign(document.createElement('a'), { href: url, download: name }).click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 interface Loaded {
   media: Media
   file: File
   /** The bundled sample rather than something the visitor chose. */
   sample: boolean
 }
+
+type Download = { state: 'idle' } | { state: 'running'; progress: number }
 
 export function ImageMode() {
   const crt = useCrt()
@@ -45,7 +56,13 @@ export function ImageMode() {
   }, [])
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [busy, setBusy] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [download, setDownload] = useState<Download>({ state: 'idle' })
+  const [videoPath, setVideoPath] = useState<VideoPath | null>(null)
+  // An image export finishes in a few frames. Swapping the label for that long only flickers, so
+  // progress appears once an export is actually slow enough to be worth reporting.
+  const [slow, setSlow] = useState(false)
+  const slowTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(slowTimer.current), [])
   const box = useRef<HTMLDivElement>(null)
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 })
   const current = useRef<Media | null>(null)
@@ -79,6 +96,18 @@ export function ImageMode() {
       .catch(() => {})
     return () => controller.abort()
   }, [replace])
+
+  // Probed as soon as a video loads, not when the download starts, so the button can disable
+  // itself up front rather than fail after a click.
+  useEffect(() => {
+    const media = loaded?.media
+    if (!media || media.kind !== 'video') return setVideoPath(null)
+    let live = true
+    detectVideoPath(preferredContainer(media.format), media.width, media.height).then((p) => live && setVideoPath(p))
+    return () => {
+      live = false
+    }
+  }, [loaded?.media])
 
   const onFile = async (file: File) => {
     setBusy(true)
@@ -115,6 +144,43 @@ export function ImageMode() {
     const height = even(rw >= rh ? (long * rh) / rw : long)
     return { options: crt.options, engine: crt.active?.renderer === 'webgl' ? ('webgl' as const) : ('canvas' as const), width, height, scale: width / rect.width }
   }
+
+  // Same format you uploaded comes back out: a PNG in is a PNG out, an MP4 in is an MP4 out where
+  // the browser can encode it. No dialog — one click downloads.
+  const runDownload = async () => {
+    if (!loaded || download.state === 'running') return
+    const { media, file } = loaded
+    const controller = new AbortController()
+    setDownload({ state: 'running', progress: 0 })
+    slowTimer.current = setTimeout(() => setSlow(true), SLOW_AFTER_MS)
+    try {
+      const cfg = burnConfig()
+      if (media.kind === 'video') {
+        const container = preferredContainer(media.format)
+        const exporter = videoPath === 'webcodecs' ? exportWebCodecs : exportMediaRecorder
+        const onProgress = (progress: number) => setDownload({ state: 'running', progress })
+        const { blob, ext } = await exporter({ file, url: media.url, duration: media.duration, cfg, container, signal: controller.signal, onProgress })
+        save(blob, fileName(ext))
+      } else {
+        const img = box.current?.querySelector('img')
+        if (!img) throw new Error('The preview isn’t ready yet.')
+        const format = media.format as 'jpeg' | 'png' | 'webp'
+        save(await exportImage(img, cfg, format), fileName(imageExt[format]))
+      }
+      toast('success', `Saved a ${cfg.width}×${cfg.height} ${media.kind}.`)
+    } catch (err) {
+      if (err instanceof Cancelled) return
+      toast('error', err instanceof Error ? err.message : 'Export failed.')
+    } finally {
+      clearTimeout(slowTimer.current)
+      setSlow(false)
+      setDownload({ state: 'idle' })
+    }
+  }
+
+  const running = download.state === 'running'
+  const blocked = loaded?.media.kind === 'video' && (videoPath === null || videoPath === 'none')
+  const downloadLabel = running && slow ? `Exporting… ${Math.round(download.progress * 100)}%` : 'Download'
 
   return (
     <AppShell
@@ -171,22 +237,7 @@ export function ImageMode() {
       sidebar={
         <Sidebar
           store={crt}
-          action={
-            <>
-              <PrimaryAction icon={<DownloadIcon />} label="Download" disabled={!loaded} onClick={() => setDownloading(true)} />
-              {loaded && (
-                <DownloadModal
-                  key={loaded.media.url}
-                  open={downloading}
-                  onClose={() => setDownloading(false)}
-                  media={loaded.media}
-                  file={loaded.file}
-                  config={burnConfig}
-                  image={() => box.current?.querySelector('img') ?? null}
-                />
-              )}
-            </>
-          }
+          action={<PrimaryAction icon={<DownloadIcon />} label={downloadLabel} disabled={!loaded || running || blocked} onClick={runDownload} />}
         />
       }
     />

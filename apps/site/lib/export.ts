@@ -1,18 +1,28 @@
 import { Burner, type BurnConfig } from './burn'
 import { Cancelled, ExportError, asExportError } from './export-errors'
+import type { Format } from './validate'
 import type { VideoResult } from './webcodecs'
 
 export { Cancelled }
 
 export type VideoPath = 'webcodecs' | 'mediarecorder' | 'none'
+/** The two containers WebCodecs can produce, in the order a given codec should be tried. */
+export type VideoContainer = 'mp4' | 'webm'
 
 export const fileName = (ext: string) => `retro-crt-${new Date().toISOString().replace(/\D/g, '').slice(0, 14)}.${ext}`
 
 // Probed with the native API so detection never pulls the encoder library in.
-const ENCODER_CODECS = ['avc1.42001f', 'vp09.00.10.08', 'vp8']
-async function encodableCodec(width: number, height: number): Promise<boolean> {
+const CODECS_BY_CONTAINER: Record<VideoContainer, string[]> = {
+  mp4: ['avc1.42001f', 'vp09.00.10.08', 'vp8'],
+  webm: ['vp09.00.10.08', 'vp8', 'avc1.42001f'],
+}
+
+/** mp4 for an mp4 upload, webm for a webm one — matches the source container when the browser allows it. */
+export const preferredContainer = (format: Format): VideoContainer => (format === 'webm' ? 'webm' : 'mp4')
+
+async function encodableCodec(container: VideoContainer, width: number, height: number): Promise<boolean> {
   if (typeof VideoEncoder === 'undefined') return false
-  for (const codec of ENCODER_CODECS) {
+  for (const codec of CODECS_BY_CONTAINER[container]) {
     try {
       if ((await VideoEncoder.isConfigSupported({ codec, width, height })).supported) return true
     } catch {
@@ -22,13 +32,16 @@ async function encodableCodec(width: number, height: number): Promise<boolean> {
   return false
 }
 
-const RECORDER_TYPES = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+const RECORDER_TYPES_BY_CONTAINER: Record<VideoContainer, string[]> = {
+  mp4: ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'],
+  webm: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4;codecs=avc1', 'video/mp4'],
+}
 
 /** Feature-detected, never assumed (§2.3). */
-export async function detectVideoPath(width: number, height: number): Promise<VideoPath> {
-  if (await encodableCodec(width, height)) return 'webcodecs'
+export async function detectVideoPath(container: VideoContainer, width: number, height: number): Promise<VideoPath> {
+  if (await encodableCodec(container, width, height)) return 'webcodecs'
   const canCapture = typeof HTMLCanvasElement.prototype.captureStream === 'function'
-  if (canCapture && typeof MediaRecorder !== 'undefined' && RECORDER_TYPES.some((t) => MediaRecorder.isTypeSupported(t))) return 'mediarecorder'
+  if (canCapture && typeof MediaRecorder !== 'undefined' && RECORDER_TYPES_BY_CONTAINER[container].some((t) => MediaRecorder.isTypeSupported(t))) return 'mediarecorder'
   return 'none'
 }
 
@@ -42,11 +55,15 @@ function withBurner<T>(cfg: BurnConfig, run: (b: Burner) => Promise<T>): Promise
   return run(burner).catch((err) => Promise.reject(asExportError(err))).finally(() => burner.destroy())
 }
 
-export function exportImage(img: HTMLImageElement, cfg: BurnConfig, type: 'image/png' | 'image/webp'): Promise<Blob> {
+const IMAGE_TYPE: Record<'jpeg' | 'png' | 'webp', string> = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+export const imageExt: Record<'jpeg' | 'png' | 'webp', string> = { jpeg: 'jpg', png: 'png', webp: 'webp' }
+
+/** Encodes back to the format the image was uploaded as — a PNG in, a PNG out. */
+export function exportImage(img: HTMLImageElement, cfg: BurnConfig, format: 'jpeg' | 'png' | 'webp'): Promise<Blob> {
   return withBurner(cfg, (burner) => {
     burner.draw(img, img.naturalWidth, img.naturalHeight, 0)
     return new Promise<Blob>((resolve, reject) =>
-      burner.output.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('The browser couldn’t encode the image.'))), type, 0.95),
+      burner.output.toBlob((blob) => (blob ? resolve(blob) : reject(new ExportError('The browser couldn’t encode the image.'))), IMAGE_TYPE[format], 0.95),
     )
   })
 }
@@ -56,22 +73,23 @@ interface VideoJob {
   url: string
   duration: number
   cfg: BurnConfig
+  container: VideoContainer
   signal: AbortSignal
   onProgress: (fraction: number) => void
 }
 
 /** Thin wrapper: the encoder library is pulled in only once a video export actually starts. */
-export function exportWebCodecs({ file, cfg, signal, onProgress }: VideoJob): Promise<VideoResult> {
+export function exportWebCodecs({ file, cfg, container, signal, onProgress }: VideoJob): Promise<VideoResult> {
   return withBurner(cfg, async (burner) => {
     const { runWebCodecs } = await import('./webcodecs')
-    return runWebCodecs(file, burner, cfg, signal, onProgress)
+    return runWebCodecs(file, burner, cfg, CODECS_BY_CONTAINER[container], signal, onProgress)
   })
 }
 
 /** Real-time capture: the clip plays once while the canvas is recorded. Main thread only (§2.3). */
-export function exportMediaRecorder({ url, duration, cfg, signal, onProgress }: VideoJob): Promise<VideoResult> {
+export function exportMediaRecorder({ url, duration, cfg, container, signal, onProgress }: VideoJob): Promise<VideoResult> {
   return withBurner(cfg, (burner) => {
-    const mimeType = RECORDER_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) ?? ''
+    const mimeType = RECORDER_TYPES_BY_CONTAINER[container].find((t) => MediaRecorder.isTypeSupported(t)) ?? ''
     const video = Object.assign(document.createElement('video'), { muted: true, playsInline: true, src: url })
     const recorder = new MediaRecorder(burner.output.captureStream(30), { mimeType, videoBitsPerSecond: 8_000_000 })
     const chunks: Blob[] = []

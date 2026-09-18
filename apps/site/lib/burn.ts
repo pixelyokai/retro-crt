@@ -28,6 +28,7 @@ export class Burner {
   private ctx: CanvasRenderingContext2D
   private o: ResolvedOptions
   private screen: { x: number; y: number; w: number; h: number; r: number }
+  private background: string
   private gl: GLRenderer | null = null
   private work: HTMLCanvasElement
   private workCtx: CanvasRenderingContext2D
@@ -42,6 +43,7 @@ export class Burner {
     const w = cfg.width - inset * 2
     const h = cfg.height - inset * 2
     this.screen = { x: inset, y: inset, w, h, r: (b.enabled ? b.radius.screen : Math.round(this.o.curvature * 28)) * s }
+    this.background = rgbCss(parseColor(this.o.background))
     this.output = canvas(cfg.width, cfg.height)
     this.ctx = context(this.output)
     this.work = canvas(w, h)
@@ -82,7 +84,12 @@ export class Burner {
 
   draw(source: Source, sourceW: number, sourceH: number, time: number): void {
     const { ctx, screen: sc } = this
-    ctx.clearRect(0, 0, this.output.width, this.output.height)
+    // Paint the background across the whole frame rather than clearing it: the bezel and the curved
+    // screen both have rounded corners, and a cleared canvas leaves those corners transparent.
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.globalAlpha = 1
+    ctx.fillStyle = this.background
+    ctx.fillRect(0, 0, this.output.width, this.output.height)
     if (this.o.bezel.enabled) this.housing()
     if (this.gl) {
       this.gl.setFit('cover', sourceW, sourceH)
@@ -93,7 +100,7 @@ export class Burner {
     ctx.beginPath()
     ctx.roundRect(sc.x, sc.y, sc.w, sc.h, sc.r)
     ctx.clip()
-    ctx.fillStyle = rgbCss(parseColor(this.o.background))
+    ctx.fillStyle = this.background
     ctx.fillRect(sc.x, sc.y, sc.w, sc.h)
     ctx.drawImage(this.gl ? this.gl.canvas : this.work, sc.x, sc.y)
     ctx.restore()
