@@ -4,7 +4,9 @@ import { DEFAULTS, type ResolvedOptions, type TintPreset } from 'retro-crt'
 export type Settings = Omit<ResolvedOptions, 'quality'>
 
 const { quality: _quality, ...TUNABLE } = DEFAULTS
-export const INITIAL: Settings = structuredClone(TUNABLE)
+// The site starts with reduced motion off so the preview shows the full effect; the export always
+// spells the option out (see `literal`), so it's one edit away in the shipped code.
+export const INITIAL: Settings = { ...structuredClone(TUNABLE), respectReducedMotion: false }
 
 export const TINTS: { value: TintPreset; label: string }[] = [
   { value: 'default', label: 'Default' },

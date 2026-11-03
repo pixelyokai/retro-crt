@@ -66,6 +66,15 @@ describe('code export', () => {
     }
   })
 
+  it('always spells out reduced motion, on or off', () => {
+    for (const t of code) {
+      expect(snippet(t, opts)).toContain('respectReducedMotion: true')
+      expect(snippet(t, { ...opts, respectReducedMotion: false })).toContain('respectReducedMotion: false')
+    }
+    expect(standaloneHtml({ respectReducedMotion: true })).toContain('prefers-reduced-motion')
+    expect(standaloneHtml({ respectReducedMotion: false })).not.toContain('prefers-reduced-motion')
+  })
+
   it('emits bezel layers when on', () => {
     expect(standaloneHtml({ bezel: { enabled: true } })).toMatch(/crt-lip/)
   })

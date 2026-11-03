@@ -1,4 +1,4 @@
-import { minimalOptions, type CRTOptions } from 'retro-crt'
+import { minimalOptions, resolveOptions, type CRTOptions } from 'retro-crt'
 
 /** The Paper export tabs first, then the remaining adapters. `html` is built in `standalone.ts`. */
 export const TARGETS = ['react', 'js', 'html', 'ts', 'vue', 'svelte', 'solid', 'angular'] as const
@@ -32,7 +32,9 @@ export const installCommand = (target: Target): string | null =>
  * escaped string literal, so nothing a user types can become executable code (§9.5).
  */
 export function literal(options: CRTOptions, indent = 0): string {
-  const json = JSON.stringify(minimalOptions(options), null, 2)
+  // Always present, on or off: reduced motion is an accessibility choice the reader should see.
+  const respectReducedMotion = resolveOptions(options).respectReducedMotion
+  const json = JSON.stringify({ ...minimalOptions(options), respectReducedMotion }, null, 2)
   // Only whole-line keys are unquoted; string values can never match the line-start anchor.
   const js = json.replace(/^(\s*)"([A-Za-z_]\w*)":/gm, '$1$2:')
   return js.split('\n').join(`\n${' '.repeat(indent)}`)

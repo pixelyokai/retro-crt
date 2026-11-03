@@ -45,7 +45,7 @@ export function standaloneHtml(input: CRTOptions): string {
     // Offsets stay within ±25% of the 200% grain layer so it always covers the screen.
     `@keyframes crt-noise { 0% { transform: translate(0, 0) } 25% { transform: translate(-17%, 10%) } 50% { transform: translate(14%, -22%) } 75% { transform: translate(-22%, -9%) } }`,
     `@keyframes crt-flicker { 0%, 8%, 33%, 61%, 86% { opacity: 0 } 7% { opacity: .06 } 31% { opacity: .03 } 58% { opacity: .08 } 84% { opacity: .04 } }`,
-    `@media (prefers-reduced-motion: reduce) { .crt-noise, .crt-flicker { animation: none; } }`,
+    o.respectReducedMotion ? `@media (prefers-reduced-motion: reduce) { .crt-noise, .crt-flicker { animation: none; } }` : '',
   ]
 
   let bezelMarkup = ''
