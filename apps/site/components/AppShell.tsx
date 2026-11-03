@@ -31,7 +31,7 @@ export function AppShell({ stage, controls, sidebar }: Props) {
   return (
     <div className="flex h-dvh bg-black p-1.5">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sm bg-neutral-950 shadow-[0_0_0_1px_rgb(255_255_255/0.12)] lg:flex-row">
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col p-1.5 max-lg:h-[58dvh] max-lg:flex-none">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col p-1.5 max-lg:h-[calc(58dvh-1.5rem)] max-lg:flex-none">
           <header className="flex shrink-0 items-center justify-between gap-3 p-4">
             <Link href="/" aria-label="Retro-CRT home" className="shrink-0 rounded-xs">
               {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size pixel art; optimisation would only soften it */}
@@ -60,7 +60,7 @@ export function AppShell({ stage, controls, sidebar }: Props) {
 function Fps() {
   const fps = useFps()
   return (
-    <span role="status" aria-live="off" className={`ml-auto shrink-0 text-xs tabular-nums ${fps !== null && fps < 50 ? 'text-amber-400' : 'text-neutral-400'}`}>
+    <span role="status" aria-live="off" className={`ml-auto shrink-0 max-lg:hiddentext-xs tabular-nums ${fps !== null && fps < 50 ? 'text-amber-400' : 'text-neutral-400'}`}>
       {fps ?? '--'} FPS
     </span>
   )
